@@ -1,0 +1,51 @@
+name: Build KAIROS APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      website_url:
+        description: Website URL to open inside the WebView
+        required: true
+        default: https://example.com
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Make Gradle available
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build debug APK
+        env:
+          WEBSITE_URL: ${{ inputs.website_url || 'https://example.com' }}
+        run: gradle --no-daemon assembleDebug -PwebsiteUrl="$WEBSITE_URL"
+
+      - name: Verify APK artifact
+        run: test -s app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: KAIROS-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
